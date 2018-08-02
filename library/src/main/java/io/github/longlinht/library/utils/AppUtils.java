@@ -10,6 +10,7 @@ import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.pm.Signature;
 import android.graphics.drawable.Drawable;
+import android.net.Uri;
 import android.support.annotation.NonNull;
 import android.util.Log;
 
@@ -951,4 +952,16 @@ public final class AppUtils {
                     "\nis system: " + isSystem();
         }
     }
+
+    public static void gotoMarket() {
+        try {
+            String localStringBuilder = "market://details?id=" + getApp().getPackageName();
+            Intent localIntent = new Intent("android.intent.action.VIEW", Uri.parse(localStringBuilder));
+            localIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            getApp().startActivity(localIntent);
+        } catch (Exception e) {// 如果没有市场 可能是会报错的
+
+        }
+    }
+
 }

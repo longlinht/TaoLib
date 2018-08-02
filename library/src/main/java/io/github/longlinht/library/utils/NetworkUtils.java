@@ -17,6 +17,8 @@ import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.Enumeration;
 
+import io.github.longlinht.library.android.PhoneInfoConfig;
+
 import static android.Manifest.permission.ACCESS_NETWORK_STATE;
 import static android.Manifest.permission.ACCESS_WIFI_STATE;
 import static android.Manifest.permission.CHANGE_WIFI_STATE;
@@ -68,6 +70,36 @@ public final class NetworkUtils {
     public static boolean isConnected() {
         NetworkInfo info = getActiveNetworkInfo();
         return info != null && info.isConnected();
+    }
+
+    /**
+     * Indicates whether network connectivity is possible. A network is unavailable
+     * when a persistent or semi-persistent condition prevents the possibility
+     * of connecting to that network. Examples include
+     * <ul>
+     * <li>The device is out of the coverage area for any network of this type.</li>
+     * <li>The device is on a network other than the home network (i.e., roaming), and
+     * data roaming has been disabled.</li>
+     * <li>The device's radio is turned off, e.g., because airplane mode is enabled.</li>
+     * </ul>
+     * @return {@code true} if the network is available, {@code false} otherwise
+     */
+    @RequiresPermission(ACCESS_NETWORK_STATE)
+    public static boolean isNetworkAvailable() {
+        final NetworkInfo info = getActiveNetworkInfo();
+        return info != null && info.isAvailable();
+    }
+
+    /**
+     * Indicates whether the device is currently roaming on this network.
+     * When {@code true}, it suggests that use of data on this network
+     * may incur extra costs.
+     * @return {@code true} if roaming is in effect, {@code false} otherwise.
+     */
+    @RequiresPermission(ACCESS_NETWORK_STATE)
+    public static boolean isRoaming() {
+        final NetworkInfo info = getActiveNetworkInfo();
+        return info != null && info.isRoaming();
     }
 
     /**
@@ -386,5 +418,18 @@ public final class NetworkUtils {
             e.printStackTrace();
             return "";
         }
+    }
+
+    /**
+     * 判断是否是移动sim卡<br>
+     */
+    public static boolean isMOBILESim() {
+        if (!StringUtils.isEmpty(PhoneInfoConfig.imsi)
+                && (PhoneInfoConfig.imsi.startsWith("46000") || PhoneInfoConfig.imsi.startsWith("46002") ||
+                PhoneInfoConfig.imsi
+                        .startsWith("46007"))) {
+            return true;
+        }
+        return false;
     }
 }
