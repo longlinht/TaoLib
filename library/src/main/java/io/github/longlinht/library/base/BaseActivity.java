@@ -1,5 +1,4 @@
-/*Copyright ©2015 TommyLemon(https://github.com/TommyLemon)
-
+/*
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -10,7 +9,8 @@ Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
-limitations under the License.*/
+limitations under the License.
+*/
 
 package io.github.longlinht.library.base;
 
@@ -19,25 +19,27 @@ import java.util.List;
 
 import io.github.longlinht.library.R;
 import io.github.longlinht.library.base.interfaces.ActivityPresenter;
-import io.github.longlinht.library.base.interfaces.OnBottomDragListener;
 import io.github.longlinht.library.base.util.Log;
 import io.github.longlinht.library.base.util.ScreenUtil;
 import io.github.longlinht.library.base.util.StringUtil;
 import io.github.longlinht.library.manager.SystemBarTintManager;
 import io.github.longlinht.library.manager.ThreadManager;
-import android.annotation.SuppressLint;
-import android.annotation.TargetApi;
+
+import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
-import android.support.annotation.Nullable;
+import android.os.PowerManager;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentManager;
-import android.view.GestureDetector;
+import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.Toolbar;
+import android.util.TypedValue;
 import android.view.GestureDetector.OnGestureListener;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
@@ -47,6 +49,8 @@ import android.view.View.OnClickListener;
 import android.view.View.OnTouchListener;
 import android.view.Window;
 import android.view.WindowManager;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -63,7 +67,7 @@ import android.widget.Toast;
  * @see #onDestroy
  * @use extends BaseActivity, 具体参考 .DemoActivity 和 .DemoFragmentActivity
  */
-public abstract class BaseActivity extends FragmentActivity implements ActivityPresenter, OnGestureListener {
+public abstract class BaseActivity extends AppCompatActivity implements ActivityPresenter, OnGestureListener {
 	private static final String TAG = "BaseActivity";
 
 	/**
@@ -89,6 +93,9 @@ public abstract class BaseActivity extends FragmentActivity implements ActivityP
 
 	private boolean isAlive = false;
 	private boolean isRunning = false;
+
+	private PowerManager.WakeLock wakeLock;
+
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -105,64 +112,70 @@ public abstract class BaseActivity extends FragmentActivity implements ActivityP
 		BaseBroadcastReceiver.register(context, receiver, ACTION_EXIT_APP);
 	}
 
-	/**
-	 * 默认标题TextView，layout.xml中用@id/tvBaseTitle绑定。子Activity内调用autoSetTitle方法 会优先使用INTENT_TITLE
-	 * @see #autoSetTitle
-	 * @warn 如果子Activity的layout中没有android:id="@id/tvBaseTitle"的TextView，使用前必须在子Activity中赋值
-	 */
-	@Nullable
-	protected TextView tvBaseTitle;
+	/** 子类可以重写改变状态栏颜色 */
+    protected int setStatusBarColor() {
+        return getColorPrimary();
+    }
 
-	@TargetApi(Build.VERSION_CODES.KITKAT)
-	@Override
-	public void setContentView(int layoutResID) {
-		super.setContentView(layoutResID);
+    /** 子类可以重写决定是否使用透明状态栏 */
+    protected boolean translucentStatusBar() {
+        return false;
+    }
 
-		// 状态栏沉浸，4.4+生效 <<<<<<<<<<<<<<<<<
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-			getWindow().setFlags(
-					WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS,
-					WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
-		}
-		SystemBarTintManager tintManager = new SystemBarTintManager(this);
-		tintManager.setStatusBarTintEnabled(true);
-		tintManager.setStatusBarTintResource(R.color.topbar_bg);//状态背景色，可传drawable资源
-		// 状态栏沉浸，4.4+生效 >>>>>>>>>>>>>>>>>
+    /** 设置状态栏颜色 */
+    protected void initSystemBarTint() {
+        Window window = getWindow();
+        if (translucentStatusBar()) {
+            // 设置状态栏全透明
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
+                window.getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
+                window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+                window.setStatusBarColor(Color.TRANSPARENT);
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                getWindow().addFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
+            }
+            return;
+        }
+        // 沉浸式状态栏
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            //5.0以上使用原生方法
+            window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
+            window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+            window.setStatusBarColor(setStatusBarColor());
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            //4.4-5.0使用三方工具类，有些4.4的手机有问题，这里为演示方便，不使用沉浸式
+//            getWindow().addFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
+            SystemBarTintManager tintManager = new SystemBarTintManager(this);
+            tintManager.setStatusBarTintEnabled(true);
+            tintManager.setStatusBarTintColor(setStatusBarColor());
+        }
+    }
 
-		tvBaseTitle = findView(R.id.tvBaseTitle);//绑定默认标题TextView
-	}
+    /** 获取主题色 */
+    public int getColorPrimary() {
+        TypedValue typedValue = new TypedValue();
+        getTheme().resolveAttribute(R.attr.colorPrimary, typedValue, true);
+        return typedValue.data;
+    }
 
-	//底部滑动实现同点击标题栏左右按钮效果<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    /** 获取深主题色 */
+    public int getDarkColorPrimary() {
+        TypedValue typedValue = new TypedValue();
+        getTheme().resolveAttribute(R.attr.colorPrimaryDark, typedValue, true);
+        return typedValue.data;
+    }
 
-	private OnBottomDragListener onBottomDragListener;
-	private GestureDetector gestureDetector;
-	/**设置该Activity界面布局，并设置底部左右滑动手势监听
-	 * @param layoutResID
-	 * @param listener
-	 * @use 在子类中
-	 * *1.onCreate中super.onCreate后setContentView(layoutResID, this);
-	 * *2.重写onDragBottom方法并实现滑动事件处理
-	 * *3.在导航栏左右按钮的onClick事件中调用onDragBottom方法
-	 */
-	public void setContentView(int layoutResID, OnBottomDragListener listener) {
-		setContentView(layoutResID);
+    /** 初始化 Toolbar */
+    public void initToolBar(Toolbar toolbar, boolean homeAsUpEnabled, String title) {
+        toolbar.setTitle(title);
+        setSupportActionBar(toolbar);
+        getSupportActionBar().setDisplayHomeAsUpEnabled(homeAsUpEnabled);
+    }
 
-		onBottomDragListener = listener;
-		gestureDetector = new GestureDetector(this, this);//初始化手势监听类
-
-		view = inflater.inflate(layoutResID, null);
-		view.setOnTouchListener(new OnTouchListener() {
-			
-			@SuppressLint("ClickableViewAccessibility")
-			@Override
-			public boolean onTouch(View v, MotionEvent event) {
-				return gestureDetector.onTouchEvent(event);
-			}
-		});
-	}
-
-	//底部滑动实现同点击标题栏左右按钮效果>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-
+    public void initToolBar(Toolbar toolbar, boolean homeAsUpEnabled, int resTitle) {
+        initToolBar(toolbar, homeAsUpEnabled, getString(resTitle));
+    }
 
 	/**
 	 * 用于 打开activity以及activity之间的通讯（传值）等；一些通讯相关基本操作（打电话、发短信等）
@@ -177,56 +190,6 @@ public abstract class BaseActivity extends FragmentActivity implements ActivityP
 	 * 退出时该界面动画,可在finish();前通过改变它的值来改变动画效果
 	 */
 	protected int exitAnim = R.anim.right_push_out;
-
-	/**通过id查找并获取控件，使用时不需要强转
-	 * @param id
-	 * @return
-	 */
-	@SuppressWarnings("unchecked")
-	public <V extends View> V findView(int id) {
-		return (V) findViewById(id);
-	}
-	/**通过id查找并获取控件，并setOnClickListener
-	 * @param id
-	 * @param l
-	 * @return
-	 */
-	public <V extends View> V findView(int id, OnClickListener l) {
-		V v = findView(id);
-		v.setOnClickListener(l);
-		return v;
-	}
-	/**通过id查找并获取控件，并setOnClickListener
-	 * @param id
-	 * @param l
-	 * @return
-	 */
-	public <V extends View> V findViewById(int id, OnClickListener l) {
-		return findView(id, l);
-	}
-
-	//自动设置标题方法<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-
-	/**自动把标题设置为上个Activity传入的INTENT_TITLE，建议在子类initView中使用
-	 * *这个方法没有return，tvTitle = tvBaseTitle，直接用tvBaseTitle
-	 * @must 在UI线程中调用
-	 */
-	protected void autoSetTitle() {
-		tvBaseTitle = autoSetTitle(tvBaseTitle);
-	}
-	/**自动把标题设置为上个Activity传入的INTENT_TITLE，建议在子类initView中使用
-	 * @param tvTitle
-	 * @return tvTitle 返回tvTitle是为了可以写成一行，如 tvTitle = autoSetTitle((TextView) findViewById(titleResId));
-	 * @must 在UI线程中调用
-	 */
-	protected TextView autoSetTitle(TextView tvTitle) {
-		if (tvTitle != null && StringUtil.isNotEmpty(getIntent().getStringExtra(INTENT_TITLE), false)) {
-			tvTitle.setText(StringUtil.getCurrentString());
-		}
-		return tvTitle;
-	}
-
-	//自动设置标题方法>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 	//显示与关闭进度弹窗方法<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
@@ -426,6 +389,51 @@ public abstract class BaseActivity extends FragmentActivity implements ActivityP
 
 	//运行线程 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
+	/**
+     * 保持屏幕常量
+     */
+    protected void keepScreenOn() {
+        PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+        wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Tao");
+        wakeLock.setReferenceCounted(false);
+        //保持屏幕常亮
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+    }
+
+    /**
+     * 弹出软键盘
+     */
+    public boolean showSoftInput(Context context, EditText editText) {
+        try {
+            editText.setFocusable(true);
+            editText.setFocusableInTouchMode(true);
+            editText.requestFocus();
+            InputMethodManager inputManager = (InputMethodManager) context
+                    .getSystemService(Context.INPUT_METHOD_SERVICE);
+            return inputManager.showSoftInput(editText, InputMethodManager.SHOW_FORCED);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    /**
+     * 隐藏键盘
+     */
+    public void hideSoftInput(Activity context) {
+        if (context == null) {
+            return;
+        }
+        try {
+            View focusView = context.getCurrentFocus();
+            if (focusView != null) {
+                ((InputMethodManager) context.getSystemService(Context.INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(
+                        focusView.getWindowToken(), InputMethodManager.HIDE_NOT_ALWAYS);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 
 
 	//Activity的返回按钮和底部弹窗的取消按钮几乎是必备，正好原生支持反射；而其它比如Fragment极少用到，也不支持反射<<<<<<<<<
@@ -438,11 +446,7 @@ public abstract class BaseActivity extends FragmentActivity implements ActivityP
 	@Override
 	public void onReturnClick(View v) {
 		Log.d(TAG, "onReturnClick >>>");
-		if (onBottomDragListener != null) {
-			onBottomDragListener.onDragBottom(false);
-		} else {
-			onBackPressed();//会从最外层子类调finish();BaseBottomWindow就是示例
-		}
+		onBackPressed();//会从最外层子类调finish();BaseBottomWindow就是示例
 	}
 	/**前进按钮被点击，默认处理是onBottomDragListener.onDragBottom(true)，重写可自定义事件处理
 	 * @param v
@@ -453,9 +457,6 @@ public abstract class BaseActivity extends FragmentActivity implements ActivityP
 	@Override
 	public void onForwardClick(View v) {
 		Log.d(TAG, "onForwardClick >>>");
-		if (onBottomDragListener != null) {
-			onBottomDragListener.onDragBottom(true);
-		}
 	}
 	//Activity常用导航栏右边按钮，而且底部弹窗BottomWindow的确定按钮是必备；而其它比如Fragment极少用到，也不支持反射>>>>>
 
@@ -535,7 +536,6 @@ public abstract class BaseActivity extends FragmentActivity implements ActivityP
 
 		inflater = null;
 		view = null;
-		tvBaseTitle = null;
 
 		fragmentManager = null;
 		progressDialog = null;
@@ -577,33 +577,6 @@ public abstract class BaseActivity extends FragmentActivity implements ActivityP
 		return true;
 	}
 
-	@Override
-	public boolean onKeyUp(int keyCode, KeyEvent event) {
-		if (isOnKeyLongPress) {
-			isOnKeyLongPress = false;
-			return true;
-		}
-
-		switch (keyCode) {
-		case KeyEvent.KEYCODE_BACK:
-			if (onBottomDragListener != null) {
-				onBottomDragListener.onDragBottom(false);
-				return true;
-			}
-			break;
-		case KeyEvent.KEYCODE_MENU:
-			if (onBottomDragListener != null) {
-				onBottomDragListener.onDragBottom(true);
-				return true;
-			}
-			break;
-		default:
-			break;
-		}
-
-		return super.onKeyUp(keyCode, event);
-	}
-
 	//手机返回键和菜单键实现同点击标题栏左右按钮效果>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 	//底部滑动实现同点击标题栏左右按钮效果<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -626,58 +599,5 @@ public abstract class BaseActivity extends FragmentActivity implements ActivityP
 	@Override
 	public void onLongPress(MotionEvent e) {
 	}
-	@Override
-	public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
-
-		//		/*原来实现全局滑动返回的代码，OnFinishListener已删除，可以自己写一个或者
-		//		 * 用onBottomDragListener.onDragBottom(false);代替onFinishListener.finish();**/
-		//		if (onFinishListener != null) {
-		//
-		//			float maxDragHeight = getResources().getDimension(R.dimen.page_drag_max_height);
-		//			float distanceY = e2.getRawY() - e1.getRawY();
-		//			if (distanceY < maxDragHeight && distanceY > - maxDragHeight) {
-		//
-		//				float minDragWidth = getResources().getDimension(R.dimen.page_drag_min_width);
-		//				float distanceX = e2.getRawX() - e1.getRawX();
-		//				if (distanceX > minDragWidth) {
-		//					onFinishListener.finish();
-		//					return true;
-		//				}
-		//			}
-		//		}
-
-
-		//底部滑动实现同点击标题栏左右按钮效果
-		if (onBottomDragListener != null && e1.getRawY() > ScreenUtil.getScreenSize(this)[1]
-				- ((int) getResources().getDimension(R.dimen.bottom_drag_height))) {
-
-			float maxDragHeight = getResources().getDimension(R.dimen.bottom_drag_max_height);
-			float distanceY = e2.getRawY() - e1.getRawY();
-			if (distanceY < maxDragHeight && distanceY > - maxDragHeight) {
-
-				float minDragWidth = getResources().getDimension(R.dimen.bottom_drag_min_width);
-				float distanceX = e2.getRawX() - e1.getRawX();
-				if (distanceX > minDragWidth) {
-					onBottomDragListener.onDragBottom(false);
-					return true;
-				} else if (distanceX < - minDragWidth) {
-					onBottomDragListener.onDragBottom(true);
-					return true;
-				}
-			} 
-		}
-
-		return false;
-	}
-	@Override  
-	public boolean dispatchTouchEvent(MotionEvent ev) {  
-		if (gestureDetector != null) {
-			gestureDetector.onTouchEvent(ev);  
-		}
-		return super.dispatchTouchEvent(ev);
-	}
-
-	//底部滑动实现同点击标题栏左右按钮效果>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-
 
 }
