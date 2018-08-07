@@ -1,18 +1,23 @@
 package io.github.longlinht.library.base;
 
-import io.github.longlinht.library.R;
 import io.github.longlinht.library.base.util.DataKeeper;
 import io.github.longlinht.library.base.util.Log;
 import io.github.longlinht.library.base.util.SettingUtil;
+import io.github.longlinht.library.rx.RxInspect;
+import io.github.longlinht.library.utils.GlobalContext;
 
 import android.app.Application;
+import android.content.Context;
+import android.support.annotation.CallSuper;
+
+import static io.github.longlinht.library.BuildConfig.DEBUG;
 
 /**基础Application
  * @author Lemon
  * @see #init
  * @use extends BaseApplication 或 在你的Application的onCreate方法中BaseApplication.init(this);
  */
-public class BaseApplication extends Application {
+abstract public class BaseApplication extends Application {
 	private static final String TAG = "BaseApplication";
 
 	public BaseApplication() {
@@ -22,11 +27,25 @@ public class BaseApplication extends Application {
 	public static Application getInstance() {
 		return instance;
 	}
-	
+
+	@CallSuper
+    @Override
+    protected void attachBaseContext(Context base) {
+        super.attachBaseContext(base);
+    }
+
+    @CallSuper
 	@Override
 	public void onCreate() {
 		super.onCreate();
 		Log.d(TAG, "项目启动 >>>>>>>>>>>>>>>>>>>> \n\n");
+
+		GlobalContext.setAppContext(this);
+        GlobalContext.setApplication(this);
+
+        if (DEBUG) {
+            RxInspect.inspect();
+        }
 		
 		init(this);
 	}
@@ -49,15 +68,10 @@ public class BaseApplication extends Application {
 	/**获取应用名
 	 * @return
 	 */
-	public String getAppName() {
-		return getResources().getString(R.string.app_name);
-	}
+	abstract public String getAppName();
 	/**获取应用版本名(显示给用户看的)
 	 * @return
 	 */
-	public String getAppVersion() {
-		return getResources().getString(R.string.app_version);
-	}
-
+	abstract public String getAppVersion();
 
 }
