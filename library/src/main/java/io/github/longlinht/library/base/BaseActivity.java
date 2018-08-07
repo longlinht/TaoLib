@@ -35,23 +35,17 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.PowerManager;
-import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentManager;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.TypedValue;
-import android.view.GestureDetector.OnGestureListener;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
-import android.view.MotionEvent;
 import android.view.View;
-import android.view.View.OnClickListener;
-import android.view.View.OnTouchListener;
 import android.view.Window;
 import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
-import android.widget.TextView;
 import android.widget.Toast;
 
 /**基础android.support.v4.app.FragmentActivity，通过继承可获取或使用 里面创建的 组件 和 方法
@@ -67,7 +61,7 @@ import android.widget.Toast;
  * @see #onDestroy
  * @use extends BaseActivity, 具体参考 .DemoActivity 和 .DemoFragmentActivity
  */
-public abstract class BaseActivity extends AppCompatActivity implements ActivityPresenter, OnGestureListener {
+public abstract class BaseActivity extends AppCompatActivity implements ActivityPresenter {
 	private static final String TAG = "BaseActivity";
 
 	/**
@@ -575,29 +569,6 @@ public abstract class BaseActivity extends AppCompatActivity implements Activity
 	public boolean onKeyLongPress(int keyCode, KeyEvent event) {
 		isOnKeyLongPress = true;
 		return true;
-	}
-
-	//手机返回键和菜单键实现同点击标题栏左右按钮效果>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-
-	//底部滑动实现同点击标题栏左右按钮效果<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-
-	@Override
-	public boolean onDown(MotionEvent e) {
-		return false;
-	}
-	@Override
-	public void onShowPress(MotionEvent e) {
-	}
-	@Override
-	public boolean onSingleTapUp(MotionEvent e) {
-		return false;
-	}
-	@Override
-	public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
-		return false;
-	}
-	@Override
-	public void onLongPress(MotionEvent e) {
 	}
 
 }

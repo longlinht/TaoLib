@@ -1,21 +1,42 @@
 package io.github.longlinht.taolib;
 
-import android.graphics.Bitmap;
-import android.support.v7.app.AppCompatActivity;
+import android.app.Activity;
 import android.os.Bundle;
 
-import io.github.longlinht.library.network.OkGo;
-import io.github.longlinht.library.network.adapter.ObservableResponse;
-import io.github.longlinht.library.network.convert.BitmapConvert;
-import io.github.longlinht.library.network.model.Response;
-import io.github.longlinht.library.utils.GlobalContext;
-import rx.Observable;
+import io.github.longlinht.library.base.BaseActivity;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends BaseActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        initSystemBarTint();
     }
+
+    @Override
+    public Activity getActivity() {
+        return this;
+    }
+
+    @Override
+    public void initView() {
+
+    }
+
+    @Override
+    public void initData() {
+
+    }
+
+    @Override
+    public void initEvent() {
+
+    }
+
+    @Override
+    protected boolean translucentStatusBar() {
+        return true;
+    }
+
 }
